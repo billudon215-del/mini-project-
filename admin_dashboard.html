@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% block title %}Admin Panel — Freelancer Web Place{% endblock %}
+
+{% block content %}
+<section class="section-pad">
+  <div class="container">
+    <h3 class="mb-4">Admin panel</h3>
+
+    <div class="row g-3 mb-4" id="statsRow"></div>
+
+    <ul class="nav nav-tabs mb-3">
+      <li class="nav-item"><button class="nav-link active" data-tab="clients" onclick="showTab('clients')">Clients</button></li>
+      <li class="nav-item"><button class="nav-link" data-tab="freelancers" onclick="showTab('freelancers')">Freelancers</button></li>
+      <li class="nav-item"><button class="nav-link" data-tab="categories" onclick="showTab('categories')">Categories</button></li>
+      <li class="nav-item"><button class="nav-link" data-tab="chats" onclick="showTab('chats')">Chat logs</button></li>
+    </ul>
+
+    <div id="tabClients"></div>
+    <div id="tabFreelancers" class="d-none"></div>
+    <div id="tabCategories" class="d-none"></div>
+    <div id="tabChats" class="d-none"></div>
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function showTab(tab) {
+  document.querySelectorAll(".nav-link").forEach(el => el.classList.toggle("active", el.dataset.tab === tab));
+  ["clients","freelancers","categories","chats"].forEach(t => {
+    document.getElementById(`tab${t.charAt(0).toUpperCase()+t.slice(1)}`).classList.toggle("d-none", t !== tab);
+  });
+}
+
+async function loadStats() {
+  const res = await FWP.api("/api/admin/analytics");
+  if (!res || !res.ok) { window.location.href = "/login"; return; }
+  const a = res.data.analytics;
+  const tiles = [
+    ["Clients", a.total_clients], ["Freelancers", a.total_freelancers],
+    ["Projects", a.total_projects], ["Completed", a.completed_projects],
+    ["Reviews", a.total_reviews], ["Flagged reviews", a.flagged_reviews],
+    ["Invoices", a.total_invoices], ["Revenue", `$${a.total_revenue.toFixed(2)}`],
+  ];
+  document.getElementById("statsRow").innerHTML = tiles.map(([label, num]) => `
+    <div class="col-md-3 col-6"><div class="stat-tile"><div class="num">${num}</div><div class="label">${label}</div></div></div>
+  `).join("");
+}
+
+async function loadClients() {
+  const res = await FWP.api("/api/admin/users?role=client");
+  const el = document.getElementById("tabClients");
+  if (!res || !res.ok) return;
+  el.innerHTML = `<table class="table"><thead><tr><th>Name</th><th>Email</th><th>Mobile</th><th>Actions</th></tr></thead><tbody>
+    ${res.data.clients.map(c => `
+      <tr><td>${c.full_name}</td><td>${c.email}</td><td>${c.mobile_number}</td>
+      <td><button class="btn btn-fwp-outline btn-sm" onclick="toggleBlock('client',${c.id})">Block/Unblock</button>
+      <button class="btn btn-outline-danger btn-sm" onclick="deleteUser('client',${c.id})">Delete</button></td></tr>
+    `).join("")}
+  </tbody></table>`;
+}
+
+async function loadFreelancers() {
+  const res = await FWP.api("/api/admin/users?role=freelancer");
+  const el = document.getElementById("tabFreelancers");
+  if (!res || !res.ok) return;
+  el.innerHTML = `<table class="table"><thead><tr><th>Name</th><th>Category</th><th>Rating</th><th>Actions</th></tr></thead><tbody>
+    ${res.data.freelancers.map(f => `
+      <tr><td>${f.name}</td><td>${f.category || ""}</td><td>${f.average_rating}</td>
+      <td><button class="btn btn-fwp-outline btn-sm" onclick="toggleBlock('freelancer',${f.id})">Block/Unblock</button>
+      <button class="btn btn-outline-danger btn-sm" onclick="deleteUser('freelancer',${f.id})">Delete</button></td></tr>
+    `).join("")}
+  </tbody></table>`;
+}
+
+async function loadCategories() {
+  const res = await FWP.api("/api/admin/categories");
+  const el = document.getElementById("tabCategories");
+  if (!res || !res.ok) return;
+  el.innerHTML = `
+    <div class="d-flex gap-2 mb-3"><input id="newCategory" class="form-control" placeholder="New category name">
+      <button class="btn btn-fwp-primary" onclick="addCategory()">Add</button></div>
+    <table class="table"><thead><tr><th>Name</th><th></th></tr></thead><tbody>
+    ${res.data.categories.map(c => `
+      <tr><td>${c.name}</td><td><button class="btn btn-outline-danger btn-sm" onclick="deleteCategory(${c.id})">Delete</button></td></tr>
+    `).join("")}
+  </tbody></table>`;
+}
+
+async function loadChats() {
+  const res = await FWP.api("/api/admin/chat-logs");
+  const el = document.getElementById("tabChats");
+  if (!res || !res.ok) return;
+  el.innerHTML = `<table class="table"><thead><tr><th>Chat ID</th><th>Client</th><th>Freelancer</th><th>Messages</th></tr></thead><tbody>
+    ${res.data.chats.map(c => `<tr><td>${c.chat_id}</td><td>${c.client_id}</td><td>${c.freelancer_id}</td><td>${c.message_count}</td></tr>`).join("")}
+  </tbody></table>`;
+}
+
+async function toggleBlock(role, id) {
+  const res = await FWP.api(`/api/admin/users/${role}/${id}/block`, { method: "PUT" });
+  if (res && res.ok) { FWP.toast("Updated."); role === "client" ? loadClients() : loadFreelancers(); }
+}
+
+async function deleteUser(role, id) {
+  if (!confirm("Delete this account permanently?")) return;
+  const res = await FWP.api(`/api/admin/users/${role}/${id}`, { method: "DELETE" });
+  if (res && res.ok) { FWP.toast("Deleted."); role === "client" ? loadClients() : loadFreelancers(); }
+}
+
+async function addCategory() {
+  const name = document.getElementById("newCategory").value.trim();
+  if (!name) return;
+  const res = await FWP.api("/api/admin/categories", { method: "POST", body: { name } });
+  if (res && res.ok) loadCategories();
+}
+
+async function deleteCategory(id) {
+  const res = await FWP.api(`/api/admin/categories/${id}`, { method: "DELETE" });
+  if (res && res.ok) loadCategories();
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  loadStats(); loadClients(); loadFreelancers(); loadCategories(); loadChats();
+});
+</script>
+{% endblock %}

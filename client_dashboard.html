@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% block title %}Client Dashboard — Freelancer Web Place{% endblock %}
+
+{% block content %}
+<section class="section-pad">
+  <div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <div>
+        <h3 class="mb-1" id="welcomeMsg">Welcome back</h3>
+        <p class="text-muted-fwp mb-0">Here's what's happening with your projects.</p>
+      </div>
+      <a href="/client/search" class="btn btn-fwp-gold"><i class="bi bi-search"></i> Find freelancers</a>
+    </div>
+
+    <div class="row g-3 mb-4">
+      <div class="col-md-4"><div class="stat-tile"><div class="num" id="statActive">–</div><div class="label">Active projects</div></div></div>
+      <div class="col-md-4"><div class="stat-tile"><div class="num" id="statCompleted">–</div><div class="label">Completed</div></div></div>
+      <div class="col-md-4"><div class="stat-tile"><div class="num" id="statTotal">–</div><div class="label">Total projects</div></div></div>
+    </div>
+
+    <h5 class="mb-3">Your projects</h5>
+    <div id="projectsList" class="row g-3"></div>
+  </div>
+</section>
+
+<!-- Review Modal -->
+<div class="modal fade" id="reviewModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content p-3">
+      <div class="modal-header"><h5 class="modal-title">Leave a review</h5>
+        <button class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <input type="hidden" id="reviewProjectId">
+        <label class="form-label">Rating</label>
+        <select class="form-select mb-3" id="reviewRating">
+          <option value="5">5 — Excellent</option>
+          <option value="4">4 — Good</option>
+          <option value="3">3 — Average</option>
+          <option value="2">2 — Below average</option>
+          <option value="1">1 — Poor</option>
+        </select>
+        <label class="form-label">Feedback</label>
+        <textarea class="form-control" id="reviewFeedback" rows="3"></textarea>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-fwp-primary" onclick="submitReview()">Submit review</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+let reviewModal;
+
+async function loadDashboard() {
+  const res = await FWP.api("/api/client/dashboard");
+  if (!res || !res.ok) { window.location.href = "/login"; return; }
+  document.getElementById("welcomeMsg").textContent = `Welcome back, ${res.data.profile.full_name.split(" ")[0]}`;
+  document.getElementById("statActive").textContent = res.data.stats.active_projects;
+  document.getElementById("statCompleted").textContent = res.data.stats.completed_projects;
+  document.getElementById("statTotal").textContent = res.data.stats.total_projects;
+
+  const projRes = await FWP.api("/api/project/mine");
+  const list = document.getElementById("projectsList");
+  list.innerHTML = "";
+  if (projRes && projRes.ok && projRes.data.projects.length) {
+    projRes.data.projects.forEach(p => list.appendChild(projectCard(p)));
+  } else {
+    list.innerHTML = `<p class="text-muted-fwp">No projects yet. <a href="/client/search">Find a freelancer</a> to get started.</p>`;
+  }
+}
+
+function projectCard(p) {
+  const div = document.createElement("div");
+  div.className = "col-md-6";
+  let actionBtn = "";
+  if (p.status === "in_progress") {
+    actionBtn = `<button class="btn btn-fwp-outline btn-sm mt-2" onclick="markComplete(${p.id})">Mark completed</button>`;
+  } else if (p.status === "completed") {
+    actionBtn = `<button class="btn btn-fwp-outline btn-sm mt-2" onclick="openReview(${p.id})">Leave review</button>`;
+  } else if (p.status === "accepted") {
+    actionBtn = `<a href="/client/freelancer/${p.freelancer_id}" class="btn btn-fwp-outline btn-sm mt-2">View freelancer</a>`;
+  }
+  div.innerHTML = `
+    <div class="fwp-card p-3 h-100">
+      <div class="d-flex justify-content-between">
+        <h6 class="mb-1">${p.title}</h6>
+        <span class="status-pill status-${p.status}">${p.status.replace(/_/g," ")}</span>
+      </div>
+      <p class="text-muted-fwp small mb-1">${p.description || ""}</p>
+      <p class="mono small mb-0">Budget: $${p.budget} · ${p.timeline_days} days</p>
+      ${actionBtn}
+    </div>`;
+  return div;
+}
+
+async function markComplete(projectId) {
+  const res = await FWP.api(`/api/project/${projectId}/status`, { method: "PUT", body: { status: "completed_by_client" } });
+  if (res && res.ok) { FWP.toast("Marked as completed by you. Waiting for freelancer confirmation."); loadDashboard(); }
+  else FWP.toast((res && res.data && res.data.message) || "Could not update status.", true);
+}
+
+function openReview(projectId) {
+  document.getElementById("reviewProjectId").value = projectId;
+  reviewModal.show();
+}
+
+async function submitReview() {
+  const project_id = document.getElementById("reviewProjectId").value;
+  const rating = document.getElementById("reviewRating").value;
+  const feedback = document.getElementById("reviewFeedback").value;
+  const res = await FWP.api("/api/review", { method: "POST", body: { project_id, rating, feedback } });
+  if (res && res.ok) { FWP.toast("Review submitted!"); reviewModal.hide(); loadDashboard(); }
+  else FWP.toast((res && res.data && res.data.message) || "Could not submit review.", true);
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  reviewModal = new bootstrap.Modal(document.getElementById("reviewModal"));
+  loadDashboard();
+});
+</script>
+{% endblock %}

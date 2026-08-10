@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% block title %}Register as Freelancer — Freelancer Web Place{% endblock %}
+
+{% block content %}
+<section class="section-pad">
+  <div class="container" style="max-width:560px">
+    <div class="fwp-card p-4 p-md-5">
+      <h3 class="mb-1">Create your freelancer profile</h3>
+      <p class="text-muted-fwp mb-4">Get discovered by clients whose requirements match your skills.</p>
+
+      <form id="regForm">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">Full name</label>
+            <input type="text" class="form-control" id="name" required>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Email</label>
+            <input type="email" class="form-control" id="email" required>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Mobile number</label>
+            <input type="tel" class="form-control" id="mobile" required>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Category</label>
+            <select id="category" class="form-select" required>
+              <option value="">Select…</option>
+              <option>Web Development</option>
+              <option>Mobile App Development</option>
+              <option>Graphic Design</option>
+              <option>Content Writing</option>
+              <option>Digital Marketing</option>
+              <option>Data Science</option>
+              <option>Video Editing</option>
+              <option>UI/UX Design</option>
+              <option>SEO</option>
+              <option>Machine Learning</option>
+            </select>
+          </div>
+          <div class="col-12">
+            <label class="form-label">Skills <span class="text-muted-fwp">(comma separated)</span></label>
+            <input type="text" class="form-control" id="skills" placeholder="react, node.js, mongodb" required>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Experience (years)</label>
+            <input type="number" step="0.5" class="form-control" id="experience" value="1">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Portfolio URL</label>
+            <input type="url" class="form-control" id="portfolio" placeholder="https://…">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Resume (PDF/DOC)</label>
+            <input type="file" class="form-control" id="resume" accept=".pdf,.doc,.docx">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Profile picture</label>
+            <input type="file" class="form-control" id="profile_picture" accept="image/*">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Password</label>
+            <input type="password" class="form-control" id="password" minlength="8" required>
+          </div>
+        </div>
+        <div id="regError" class="text-danger small mt-3"></div>
+        <button type="submit" class="btn btn-fwp-primary w-100 mt-3">Create profile</button>
+      </form>
+
+      <p class="text-center text-muted-fwp mt-4 mb-0 small">
+        Already have an account? <a href="/login" class="fw-semibold">Log in</a>
+      </p>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.getElementById("regForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const errEl = document.getElementById("regError");
+  errEl.textContent = "";
+
+  const fd = new FormData();
+  fd.append("name", document.getElementById("name").value);
+  fd.append("email", document.getElementById("email").value);
+  fd.append("mobile", document.getElementById("mobile").value);
+  fd.append("category", document.getElementById("category").value);
+  fd.append("skills", document.getElementById("skills").value);
+  fd.append("experience", document.getElementById("experience").value);
+  fd.append("portfolio", document.getElementById("portfolio").value);
+  fd.append("password", document.getElementById("password").value);
+  const resumeFile = document.getElementById("resume").files[0];
+  const picFile = document.getElementById("profile_picture").files[0];
+  if (resumeFile) fd.append("resume", resumeFile);
+  if (picFile) fd.append("profile_picture", picFile);
+
+  const res = await FWP.api("/api/auth/register/freelancer", { method: "POST", body: fd, isForm: true });
+  if (res && res.ok) {
+    FWP.toast("Profile created! Please log in.");
+    window.location.href = "/login";
+  } else {
+    errEl.textContent = (res && res.data && res.data.message) || "Registration failed.";
+  }
+});
+</script>
+{% endblock %}

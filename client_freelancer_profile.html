@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block title %}Freelancer Profile — Freelancer Web Place{% endblock %}
+
+{% block content %}
+<section class="section-pad">
+  <div class="container" style="max-width:780px">
+    <div id="profileCard" class="fwp-card p-4 mb-4"></div>
+
+    <div class="d-flex gap-2 mb-4">
+      <button class="btn btn-fwp-gold" onclick="openHireModal()">Hire this freelancer</button>
+      <button class="btn btn-fwp-outline" onclick="startChat()">Chat</button>
+    </div>
+
+    <h5 class="mb-3">Reviews</h5>
+    <div id="reviewsList"></div>
+  </div>
+</section>
+
+<div class="modal fade" id="hireModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content p-3">
+      <div class="modal-header"><h5 class="modal-title">Send project request</h5>
+        <button class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <label class="form-label">Project title</label>
+        <input class="form-control mb-3" id="hireTitle" required>
+        <label class="form-label">Description</label>
+        <textarea class="form-control mb-3" id="hireDescription" rows="3"></textarea>
+        <div class="row g-2">
+          <div class="col-6"><label class="form-label">Budget ($)</label><input type="number" class="form-control" id="hireBudget"></div>
+          <div class="col-6"><label class="form-label">Timeline (days)</label><input type="number" class="form-control" id="hireTimeline" value="7"></div>
+        </div>
+      </div>
+      <div class="modal-footer"><button class="btn btn-fwp-primary" onclick="sendHireRequest()">Send request</button></div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const freelancerId = {{ freelancer_id }};
+let hireModal;
+
+async function loadProfile() {
+  const res = await FWP.api(`/api/client/freelancer/${freelancerId}`);
+  if (!res || !res.ok) { FWP.toast("Could not load profile.", true); return; }
+  const f = res.data.freelancer;
+  document.getElementById("profileCard").innerHTML = `
+    <div class="d-flex gap-3">
+      ${FWP.matchRingHTML(f.average_rating * 20)}
+      <div>
+        <h3 class="mb-1">${f.name}</h3>
+        <span class="badge-category">${f.category || ""}</span>
+        <div class="mt-2">${FWP.starsHTML(f.average_rating)} <span class="text-muted-fwp small">(${f.total_reviews} reviews)</span></div>
+      </div>
+    </div>
+    <p class="mt-3">${f.bio || "No bio provided."}</p>
+    <div class="row mono small mt-3">
+      <div class="col-6 col-md-3"><strong>$${f.hourly_rate}</strong><br><span class="text-muted-fwp">per hour</span></div>
+      <div class="col-6 col-md-3"><strong>${f.experience_years}y</strong><br><span class="text-muted-fwp">experience</span></div>
+      <div class="col-6 col-md-3"><strong>${f.completed_projects_count}</strong><br><span class="text-muted-fwp">completed</span></div>
+      <div class="col-6 col-md-3"><strong>${f.availability}</strong><br><span class="text-muted-fwp">availability</span></div>
+    </div>
+    <p class="mt-3 small"><strong>Skills:</strong> ${(f.skills_list || []).join(", ") || f.skills_text}</p>
+    ${f.portfolio_url ? `<a href="${f.portfolio_url}" target="_blank" class="small">View portfolio →</a>` : ""}
+  `;
+}
+
+async function loadReviews() {
+  const res = await FWP.api(`/api/review/freelancer/${freelancerId}`);
+  const list = document.getElementById("reviewsList");
+  if (!res || !res.ok || !res.data.reviews.length) {
+    list.innerHTML = `<p class="text-muted-fwp">No reviews yet.</p>`;
+    return;
+  }
+  list.innerHTML = res.data.reviews.map(r => `
+    <div class="fwp-card p-3 mb-2">
+      <div>${FWP.starsHTML(r.rating)}</div>
+      <p class="mb-0 small">${r.feedback || ""}</p>
+    </div>`).join("");
+}
+
+function openHireModal() { hireModal.show(); }
+
+async function sendHireRequest() {
+  const title = document.getElementById("hireTitle").value.trim();
+  const description = document.getElementById("hireDescription").value.trim();
+  const budget = document.getElementById("hireBudget").value;
+  const timeline_days = document.getElementById("hireTimeline").value;
+  if (!title) { FWP.toast("Project title is required.", true); return; }
+
+  const res = await FWP.api("/api/project/request", { method: "POST",
+    body: { freelancer_id: freelancerId, title, description, budget, timeline_days } });
+  if (res && res.ok) { FWP.toast("Request sent!"); hireModal.hide(); }
+  else FWP.toast((res && res.data && res.data.message) || "Could not send request.", true);
+}
+
+async function startChat() {
+  const res = await FWP.api("/api/chat/start", { method: "POST", body: { other_id: freelancerId } });
+  if (res && res.ok) window.location.href = `/chat/${res.data.chat_id}`;
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  hireModal = new bootstrap.Modal(document.getElementById("hireModal"));
+  loadProfile();
+  loadReviews();
+});
+</script>
+{% endblock %}

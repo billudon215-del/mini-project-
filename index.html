@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %}Freelancer Web Place — AI-Matched Freelance Hiring{% endblock %}
+
+{% block content %}
+<section class="hero">
+  <div class="container">
+    <div class="row align-items-center">
+      <div class="col-lg-7">
+        <div class="eyebrow mb-2">TF-IDF + Cosine Similarity + Random Forest</div>
+        <h1>Describe the work. <br>The model finds the freelancer.</h1>
+        <p class="lead-text mt-3">
+          Freelancer Web Place ranks every profile against your actual requirement text —
+          not just keyword filters — and re-ranks by real track record: rating, reviews,
+          and completed projects.
+        </p>
+      </div>
+      <div class="col-lg-5">
+        <div class="search-card">
+          <label class="form-label fw-semibold" style="color:#10192B">What do you need done?</label>
+          <textarea id="requirementInput" class="form-control mb-3" rows="3"
+            placeholder="e.g. Need a React Native developer with Firebase experience for a food delivery app"></textarea>
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <select id="categoryInput" class="form-select form-select-sm">
+                <option value="">Any category</option>
+                <option>Web Development</option>
+                <option>Mobile App Development</option>
+                <option>Graphic Design</option>
+                <option>Content Writing</option>
+                <option>Digital Marketing</option>
+                <option>Data Science</option>
+                <option>Video Editing</option>
+                <option>UI/UX Design</option>
+                <option>SEO</option>
+                <option>Machine Learning</option>
+              </select>
+            </div>
+            <div class="col-6">
+              <input id="maxPriceInput" type="number" class="form-control form-control-sm" placeholder="Max $/hr">
+            </div>
+          </div>
+          <button class="btn btn-fwp-gold w-100" onclick="runSearch()">
+            <i class="bi bi-stars"></i> Find matches
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section-pad">
+  <div class="container">
+    <h3 class="mb-1">How the matching works</h3>
+    <p class="text-muted-fwp mb-4">Three modules, one ranked shortlist.</p>
+    <div class="row g-4">
+      <div class="col-md-4">
+        <div class="fwp-card p-4 h-100">
+          <div class="mono text-muted-fwp mb-2">01 · TEXT</div>
+          <h5>Requirement → Vector</h5>
+          <p class="text-muted-fwp mb-0">Your free-text brief is vectorized with TF-IDF and compared to every freelancer profile using cosine similarity.</p>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="fwp-card p-4 h-100">
+          <div class="mono text-muted-fwp mb-2">02 · TRACK RECORD</div>
+          <h5>Quality re-ranking</h5>
+          <p class="text-muted-fwp mb-0">A Random Forest model scores reliability from experience, rating, reviews, and completed projects.</p>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="fwp-card p-4 h-100">
+          <div class="mono text-muted-fwp mb-2">03 · SHORTLIST</div>
+          <h5>Top 10, blended</h5>
+          <p class="text-muted-fwp mb-0">Scores are blended and returned as a ranked shortlist — each card shows its match ring.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function runSearch() {
+  const q = document.getElementById("requirementInput").value.trim();
+  const category = document.getElementById("categoryInput").value;
+  const maxPrice = document.getElementById("maxPriceInput").value;
+  const params = new URLSearchParams();
+  if (q) params.set("q", q);
+  if (category) params.set("category", category);
+  if (maxPrice) params.set("max_price", maxPrice);
+  window.location.href = `/client/search?${params.toString()}`;
+}
+</script>
+{% endblock %}

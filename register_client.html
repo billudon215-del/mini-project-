@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Register as Client — Freelancer Web Place{% endblock %}
+
+{% block content %}
+<section class="section-pad">
+  <div class="container" style="max-width:480px">
+    <div class="fwp-card p-4 p-md-5">
+      <h3 class="mb-1">Create your client account</h3>
+      <p class="text-muted-fwp mb-4">Hire the right freelancer, faster.</p>
+
+      <form id="regForm">
+        <div class="mb-3">
+          <label class="form-label">Full name</label>
+          <input type="text" class="form-control" id="full_name" required>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Email</label>
+          <input type="email" class="form-control" id="email" required>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Mobile number</label>
+          <input type="tel" class="form-control" id="mobile_number" required>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Password</label>
+          <input type="password" class="form-control" id="password" minlength="8" required>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Confirm password</label>
+          <input type="password" class="form-control" id="confirm_password" minlength="8" required>
+        </div>
+        <div id="regError" class="text-danger small mb-2"></div>
+        <button type="submit" class="btn btn-fwp-primary w-100">Create account</button>
+      </form>
+
+      <p class="text-center text-muted-fwp mt-4 mb-0 small">
+        Already have an account? <a href="/login" class="fw-semibold">Log in</a>
+      </p>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.getElementById("regForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const errEl = document.getElementById("regError");
+  errEl.textContent = "";
+
+  const body = {
+    full_name: document.getElementById("full_name").value,
+    email: document.getElementById("email").value,
+    mobile_number: document.getElementById("mobile_number").value,
+    password: document.getElementById("password").value,
+    confirm_password: document.getElementById("confirm_password").value,
+  };
+
+  const res = await FWP.api("/api/auth/register/client", { method: "POST", body });
+  if (res && res.ok) {
+    FWP.toast("Account created! Please log in.");
+    window.location.href = "/login";
+  } else {
+    errEl.textContent = (res && res.data && res.data.message) || "Registration failed.";
+  }
+});
+</script>
+{% endblock %}

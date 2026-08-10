@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Log in — Freelancer Web Place{% endblock %}
+
+{% block content %}
+<section class="section-pad">
+  <div class="container" style="max-width:460px">
+    <div class="fwp-card p-4 p-md-5">
+      <h3 class="mb-1">Welcome back</h3>
+      <p class="text-muted-fwp mb-4">Log in to continue.</p>
+
+      <div class="btn-group w-100 mb-4" role="group">
+        <input type="radio" class="btn-check" name="role" id="roleClient" value="client" checked>
+        <label class="btn btn-outline-dark btn-sm" for="roleClient">Client</label>
+        <input type="radio" class="btn-check" name="role" id="roleFreelancer" value="freelancer">
+        <label class="btn btn-outline-dark btn-sm" for="roleFreelancer">Freelancer</label>
+        <input type="radio" class="btn-check" name="role" id="roleAdmin" value="admin">
+        <label class="btn btn-outline-dark btn-sm" for="roleAdmin">Admin</label>
+      </div>
+
+      <form id="loginForm">
+        <div class="mb-3">
+          <label class="form-label">Email</label>
+          <input type="email" class="form-control" id="email" required>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Password</label>
+          <input type="password" class="form-control" id="password" required>
+        </div>
+        <div id="loginError" class="text-danger small mb-2"></div>
+        <button type="submit" class="btn btn-fwp-primary w-100">Log in</button>
+      </form>
+
+      <p class="text-center text-muted-fwp mt-4 mb-0 small">
+        New here? <a href="/register/client" class="fw-semibold">Register as client</a> ·
+        <a href="/register/freelancer" class="fw-semibold">Register as freelancer</a>
+      </p>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.getElementById("loginForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const role = document.querySelector('input[name="role"]:checked').value;
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+  const errEl = document.getElementById("loginError");
+  errEl.textContent = "";
+
+  const res = await FWP.api("/api/auth/login", { method: "POST", body: { email, password, role } });
+  if (res && res.ok) {
+    FWP.setSession(res.data.access_token, res.data.role, res.data.user);
+    window.location.href = role === "client" ? "/client/dashboard"
+      : role === "freelancer" ? "/freelancer/dashboard" : "/admin/dashboard";
+  } else {
+    errEl.textContent = (res && res.data && res.data.message) || "Login failed.";
+  }
+});
+</script>
+{% endblock %}
